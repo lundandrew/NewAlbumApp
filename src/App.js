@@ -14,159 +14,18 @@ import {
   Typography
 } from "@material-ui/core";
 import { Link, Route } from "react-router-dom";
-import { auth } from "./firebase";
-
-export function SignIn(props) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(u => {
-      if (u) {
-        props.history.push("/app");
-      }
-      // do something
-    });
-
-    return unsubscribe;
-  }, [props.history]);
-
-  const handleSignIn = () => {
-    auth
-      .signInWithEmailAndPassword(email, password)
-      .then(() => {})
-      .catch(error => {
-        alert(error.message);
-      });
-  };
-
-  return (
-    <div>
-      <AppBar position="static" color="primary">
-        <Toolbar>
-          <Typography variant="h6" color="inherit">
-            Sign In
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <Paper style={{ width: "480px", marginTop: "50px", padding: "30px" }}>
-          <TextField
-            placeholder={"Email"}
-            fullWidth={true}
-            value={email}
-            onChange={e => {
-              setEmail(e.target.value);
-            }}
-          />
-          <TextField
-            type={"password"}
-            placeholder="Password"
-            fullWidth={true}
-            style={{ marginTop: "30px" }}
-            value={password}
-            onChange={e => {
-              setPassword(e.target.value);
-            }}
-          />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: "30px"
-            }}
-          >
-            <Typography>
-              Don't have an account? <Link to="/signup">Sign up!</Link>
-            </Typography>
-            <Button color="primary" variant="contained" onClick={handleSignIn}>
-              Sign in
-            </Button>
-          </div>
-        </Paper>
-      </div>
-    </div>
-  );
-}
-
-export function SignUp(props) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(u => {
-      if (u) {
-        props.history.push("/app");
-      }
-      // do something
-    });
-
-    return unsubscribe;
-  }, [props.history]);
-
-  const handleSignUp = () => {
-    auth
-      .createUserWithEmailAndPassword(email, password)
-      .then(() => {})
-      .catch(error => {
-        alert(error.message);
-      });
-  };
-
-  return (
-    <div>
-      <AppBar position="static" color="primary">
-        <Toolbar>
-          <Typography variant="h6" color="inherit">
-            Sign Up
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <Paper style={{ width: "480px", marginTop: "50px", padding: "30px" }}>
-          <TextField
-            placeholder={"Email"}
-            fullWidth={true}
-            value={email}
-            onChange={e => {
-              setEmail(e.target.value);
-            }}
-          />
-          <TextField
-            type={"password"}
-            placeholder="Password"
-            fullWidth={true}
-            style={{ marginTop: "30px" }}
-            value={password}
-            onChange={e => {
-              setPassword(e.target.value);
-            }}
-          />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: "30px"
-            }}
-          >
-            <Typography>
-              Already have an account? <Link to="/">Sign in!</Link>
-            </Typography>
-            <Button color="primary" variant="contained" onClick={handleSignUp}>
-              Sign up
-            </Button>
-          </div>
-        </Paper>
-      </div>
-    </div>
-  );
-}
+import { auth, db, snapshotToArray } from "./firebase";
+import Photos from "./Photos";
+import AddAlbum from "./AddAlbum";
+import PublicFeed from "./PublicFeed"
 
 export function App(props) {
   const [drawer_open, setDrawerOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [optionOpen, setOptionOpen] = useState(false);
+  const [albums, setAlbums] = useState([
+    {id:0, title:"Nature"}, {id:1, title:"city"}
+  ]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(u => {
@@ -179,6 +38,15 @@ export function App(props) {
 
     return unsubscribe;
   }, [props.history]);
+
+  useEffect(() => {
+    if  (user) {
+      db.collection("users").doc(user.uid).collection("albums").onSnapshot((snapshot)=>{
+        const updated_albums = snapshotToArray(snapshot)
+        setAlbums(updated_albums)
+      })
+    }
+  },[user])
 
   const handleSignOut = () => {
     auth
@@ -212,7 +80,7 @@ export function App(props) {
             color="inherit"
             style={{ flexGrow: 1, marginLeft: "30px" }}
           >
-            My App
+            My Photo Albums
           </Typography>
           <Typography color="inherit" style={{ marginRight: "30px" }}>
             Hi! {user.email}
@@ -228,12 +96,31 @@ export function App(props) {
           setDrawerOpen(false);
         }}
       >
-        <List>
-          <ListItem button>
-            <ListItemText primary="Home" />
+        <List component ="nav">
+          <ListItem button to={"/app/public"} component={Link}>
+            <ListItemText primary="Public Feed"/>
+          </ListItem>
+          {albums.map((e) => {
+            return(
+              <ListItem button to={"/app/album/" + e.id + "/"} component ={Link} onClick={() => {setDrawerOpen(false)}}>
+              <ListItemText primary={e.name}/>
+            </ListItem>
+            )
+          })}
+          <ListItem button onClick={() => {setOptionOpen(true)}}>
+            <ListItemText primary="Create New Album" />
           </ListItem>
         </List>
       </Drawer>
+      <AddAlbum open={optionOpen} onClose={() => {setOptionOpen(false)}} user={user}/>
+      <Route path="/app/album/:album_id/" render={(routeProps)=> {
+        return (<Photos user={user} {...routeProps} />
+          )
+      }} />
+      <Route path="/app/public" render={(routeProps)=> {
+        return (<PublicFeed user={user} {...routeProps}/>
+        )
+      }} />
     </div>
   );
 }
