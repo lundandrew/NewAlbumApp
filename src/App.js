@@ -102,7 +102,7 @@ export function App(props) {
           </ListItem>
           {albums.map((e) => {
             return(
-              <ListItem button to={"/app/album/" + e.id + "/"} component ={Link} onClick={() => {setDrawerOpen(false)}}>
+            <ListItem button to={"/app/album/" + e.id + "/"} component ={Link} onClick={() => {setDrawerOpen(false)}}>
               <ListItemText primary={e.name}/>
             </ListItem>
             )
